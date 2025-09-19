@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - WORKERS=1
+      - TIMEOUT_MS=900
+      - LOG_LEVEL=info
+      - MODEL_NAME=
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    networks:
+      - x5-ner-network
+
+networks:
+  x5-ner-network:
+    driver: bridge
