@@ -17,7 +17,7 @@ services:
       - "traefik.http.routers.x5-ner-service.rule=Host(`x5-api.tav.ru.net`)" #Условие для перехвата трафика  && PathPrefix(`/`)
       - "traefik.http.routers.x5-ner-service.entrypoints=https" #Точка входа(протокол), описана в traefik.yml
       - "traefik.http.services.x5-ner-service.loadbalancer.server.port=8000" #Порт куда транслируем трафик
-      - "traefik.http.routers.x5-ner-service.middlewares=chain-sites@file" #Цепочка обработчиков, заголовки, DDOS из файла
+      - "traefik.http.routers.x5-ner-service.middlewares=chain-dify@file" #Цепочка обработчиков, заголовки, DDOS из файла
       # TLS
       - "traefik.http.routers.x5-ner-service.tls=true" #Включаем TLS
       - "traefik.http.routers.x5-ner-service.tls.certresolver=letsencrypt" #Указываем имя резолвера для TLS, описан в traefik.yml
