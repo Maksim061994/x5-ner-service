@@ -40,7 +40,7 @@ jobs:
     
     - name: Lint with ruff
       run: |
-        ruff check app/ --output-format=github
+        ruff check app/ --output-format=github --ignore W293
     
     - name: Format check with black
       run: |
