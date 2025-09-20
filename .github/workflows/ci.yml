@@ -1,15 +1,15 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    types: [opened, synchronize, reopened]
+    branches: [ master ]
 
 permissions:
   security-events: write
   actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   test:
@@ -61,6 +61,9 @@ jobs:
         name: codecov-umbrella
 
   deploy-to-server:
+    # Проверяем, что PR не из форка
+    if: github.event.pull_request.head.repo.full_name == github.repository
+  
     runs-on: ubuntu-latest
     
     steps:
@@ -85,27 +88,31 @@ jobs:
     - name: Add server to known hosts
       run: |
         mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
         ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
 
     - name: Update DEVEL directory and sync with production
       run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -e
+          echo "Deploying branch: ${{ github.head_ref }}"
           
           # Переходим в каталог разработки
           cd /opt/services/DEVEL/parser
           
-          # Обновляем код из ветки PR
-          git fetch origin ${{ github.head_ref }}:pr-branch
-          git checkout pr-branch
-          git pull origin pr-branch
+          # Очищаем любые локальные изменения
+          git clean -fd
+          git fetch origin
+          git checkout -f ${{ github.head_ref }}
+          git reset --hard origin/${{ github.head_ref }}
           
           # Синхронизируем с production каталогом, исключая .git
           rsync -av --delete --exclude='.git/' /opt/services/DEVEL/parser/ /opt/services/parser/
           docker compose -f docker-compose.prod.yml down --rmi all
           docker compose -f docker-compose.prod.yml up -d
           
-          echo "Deployment completed successfully!"
+          echo "✅Deployment completed successfully!"
         EOF
 
     - name: Debug info
