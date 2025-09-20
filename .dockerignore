@@ -1,0 +1,9 @@
+.git/
+.github/
+.gitignore
+.dockerignore
+docker-compose.*
+Dockerfile*
+env.example
+install_dependencies.sh
+README.md
