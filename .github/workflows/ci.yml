@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,6 +19,7 @@ jobs:
         python-version: [3.11]
 
     steps:
+    - name: Checkout Code
     - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
@@ -54,41 +60,58 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  build:
-    needs: test
+  deploy-to-server:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker image
+    - name: Verify PR is not from fork
+      if: github.event.pull_request.head.repo.fork
       run: |
-        docker build -t x5-ner:latest .
+        echo "PR from fork repository - skipping deployment"
+        exit 1
     
-    - name: Test Docker image
-      run: |
-        docker run -d -p 8000:8000 --name test-container x5-ner:latest
-        sleep 10
-        curl -f http://localhost:8000/health
-        docker stop test-container
-        docker rm test-container
-    
-    - name: Login to Docker Hub
-      if: github.event_name == 'push'
-      uses: docker/login-action@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Push to Docker Hub
-      if: github.event_name == 'push'
+        ref: ${{ github.head_ref }}
+        fetch-depth: 0
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known hosts
       run: |
-        docker tag x5-ner:latest ${{ secrets.DOCKER_USERNAME }}/x5-ner:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/x5-ner:latest
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Update DEVEL directory and sync with production
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          set -e
+          
+          # Переходим в каталог разработки
+          cd /opt/services/DEVEL/parser
+          
+          # Обновляем код из ветки PR
+          git fetch origin ${{ github.head_ref }}:pr-branch
+          git checkout pr-branch
+          git pull origin pr-branch
+          
+          # Синхронизируем с production каталогом, исключая .git
+          rsync -av --delete --exclude='.git/' /opt/services/DEVEL/parser/ /opt/services/parser/
+          docker compose -f docker-compose.prod.yml down --rmi all
+          docker compose -f docker-compose.prod.yml up -d
+          
+          echo "Deployment completed successfully!"
+        EOF
+
+    - name: Debug info
+    run: |
+      echo "PR branch: ${{ github.head_ref }}"
+      echo "PR number: ${{ github.event.pull_request.number }}"
 
   security:
     runs-on: ubuntu-latest
@@ -104,8 +127,7 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
     
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: 'trivy-results.sarif'
