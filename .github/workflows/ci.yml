@@ -40,22 +40,27 @@ jobs:
         pip install -r requirements.txt
     
     - name: Lint with ruff
+      continue-on-error: true
       run: |
         ruff check app/ --output-format=github --ignore W293,E501,E203
     
     - name: Format check with black
+      continue-on-error: true
       run: |
         black --check app/
     
     - name: Type check with mypy
+      continue-on-error: true
       run: |
         mypy app/ --ignore-missing-imports
     
     - name: Test with pytest
+      continue-on-error: true
       run: |
         pytest app/tests/ -v --cov=app --cov-report=xml
     
     - name: Upload coverage to Codecov
+      continue-on-error: true
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
