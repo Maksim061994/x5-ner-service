@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: Checkout Code
-    - uses: actions/checkout@v4
+      uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
@@ -68,7 +68,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    
     - name: Verify PR is not from fork
       if: github.event.pull_request.head.repo.fork
       run: |
@@ -117,9 +116,9 @@ jobs:
         EOF
 
     - name: Debug info
-    run: |
-      echo "PR branch: ${{ github.head_ref }}"
-      echo "PR number: ${{ github.event.pull_request.number }}"
+      run: |
+        echo "PR branch: ${{ github.head_ref }}"
+        echo "PR number: ${{ github.event.pull_request.number }}"
 
   security:
     runs-on: ubuntu-latest
