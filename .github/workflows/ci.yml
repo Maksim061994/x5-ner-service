@@ -2,14 +2,14 @@ name: CI/CD Pipeline
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+#    types: [opened, synchronize, reopened]
     branches: [ main ]
 
-permissions:
-  security-events: write
-  actions: read
-  contents: read
-  pull-requests: read
+#permissions:
+#  security-events: write
+#  actions: read
+#  contents: read
+#  pull-requests: read
 
 jobs:
   test:
