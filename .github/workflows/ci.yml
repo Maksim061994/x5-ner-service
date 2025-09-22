@@ -95,12 +95,12 @@ jobs:
       run: |
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ secrets.HOST_TEST }} >> ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
 
     - name: Update DEVEL directory and sync with production
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ${{ secrets.USER_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
           set -e
           echo "Deploying branch: ${{ github.head_ref }}"
           
