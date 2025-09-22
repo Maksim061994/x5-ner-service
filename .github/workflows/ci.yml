@@ -136,12 +136,19 @@ jobs:
           
           # Переходим в каталог разработки
           cd /opt/services/DEVEL/parser
-          
-          # Настраиваем SSH для Git
+      
+          # Настраиваем SSH для Git с правильным ключом
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no"
       
-          # Меняем URL на SSH если нужно
-          git remote set-url origin git@github.com/Maksim061994/x5-ner-service.git
+          # Тестируем подключение (игнорируем код выхода, так как GitHub не дает shell)
+          ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no -T git@github.com 2>&1 | grep "successfully authenticated" || true
+      
+          # Проверяем, что branch существует перед checkout
+          git fetch origin
+      
+          # Проверяем существование ветки
+          if git show-ref --verify --quiet refs/remotes/origin/${{ github.head_ref }}; then
+            echo "Branch ${{ github.head_ref }} exists, proceeding with checkout"
           
           # Очищаем любые локальные изменения
           git clean -fd
@@ -155,6 +162,10 @@ jobs:
           docker compose -f docker-compose.prod.yml up -d
           
           echo "✅Deployment completed successfully!"
+        else
+          echo "❌ Branch ${{ github.head_ref }} does not exist on remote"
+          exit 1
+        fi
         EOF
 
     - name: Debug info
