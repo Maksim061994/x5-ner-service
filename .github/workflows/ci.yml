@@ -100,7 +100,7 @@ jobs:
 
     - name: Update DEVEL directory and sync with production
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.USER_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
           set -e
           echo "Deploying branch: ${{ github.head_ref }}"
           
