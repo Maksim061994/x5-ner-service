@@ -140,7 +140,19 @@ jobs:
       
           # Настраиваем SSH для Git с правильным ключом
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no"
-          
+
+          # Проверяем и исправляем remote URL если он HTTPS
+          CURRENT_URL=$(git remote get-url origin)
+          echo "Current remote URL: $CURRENT_URL"
+      
+          if [[ "$CURRENT_URL" == https://* ]]; then
+            echo "Changing HTTPS URL to SSH..."
+            git remote set-url origin git@github.com:Maksim061994/x5-ner-service.git
+          fi
+      
+          # Проверяем правильность URL после изменения
+          echo "New remote URL: $(git remote get-url origin)"
+
           # Проверяем, что branch существует перед checkout
           git fetch origin
       
