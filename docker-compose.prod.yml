@@ -1,0 +1,45 @@
+services:
+  x5_ner_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: x5_ner_service
+    expose:
+      - "8000"
+    env_file: .env
+    command: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --log-config=logconf.ini -n x5_ner_service
+    restart: unless-stopped
+    volumes:
+      - ./app:/opt/app
+      - ./gunicorn.conf.py:/opt/gunicorn.conf.py
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.x5-ner-service.rule=Host(`x5-api.tav.ru.net`)" #Условие для перехвата трафика  && PathPrefix(`/`)
+      - "traefik.http.routers.x5-ner-service.entrypoints=https" #Точка входа(протокол), описана в traefik.yml
+      - "traefik.http.services.x5-ner-service.loadbalancer.server.port=8000" #Порт куда транслируем трафик
+      - "traefik.http.routers.x5-ner-service.middlewares=chain-dify@file" #Цепочка обработчиков, заголовки, DDOS из файла
+      # TLS
+      - "traefik.http.routers.x5-ner-service.tls=true" #Включаем TLS
+      - "traefik.http.routers.x5-ner-service.tls.certresolver=letsencrypt" #Указываем имя резолвера для TLS, описан в traefik.yml
+      # SANs
+      - "traefik.http.routers.x5-ner-service.tls.domains[0].main=x5-api.tav.ru.net"
+    logging:
+      driver: "json-file"
+      options:
+          max-size: "10m"
+          max-file: "10"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    networks:
+      traefik:
+        ipv4_address: 192.168.151.5
