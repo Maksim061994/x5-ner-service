@@ -99,6 +99,7 @@ jobs:
         chmod 600 ~/.ssh/known_hosts
 
     - name: Debug SSH and Git setup
+      continue-on-error: true
       run: |
         ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
           set -e
