@@ -98,6 +98,36 @@ jobs:
         ssh-keyscan -H ${{ secrets.HOST_TEST }} >> ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
 
+    - name: Debug SSH and Git setup
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
+          set -e
+          echo "=== Debug Information ==="
+      
+          # Проверяем существование ключа
+          echo "1. Deploy key exists:"
+          ls -la ~/.ssh/github_deploy_key* || echo "Key not found"
+      
+          # Проверяем права на ключ
+          echo "2. Key permissions:"
+          stat ~/.ssh/github_deploy_key 2>/dev/null || echo "Key not accessible"
+      
+          # Проверяем SSH конфиг
+          echo "3. SSH config:"
+          cat ~/.ssh/config 2>/dev/null || echo "No SSH config"
+      
+          # Проверяем текущий git remote
+          cd /opt/services/DEVEL/parser
+          echo "4. Current remote URL:"
+          git remote get-url origin
+      
+          # Тестируем подключение к GitHub
+          echo "5. Testing GitHub SSH access:"
+          ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no -T git@github.com
+      
+          echo "=== End Debug ==="
+        EOF
+
     - name: Update DEVEL directory and sync with production
       run: |
         ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
