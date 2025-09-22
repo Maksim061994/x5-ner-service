@@ -167,9 +167,11 @@ jobs:
             git reset --hard origin/${{ github.head_ref }}
           
             # Синхронизируем с production каталогом, исключая .git
-            rsync -av --delete --exclude='.git/' /opt/services/DEVEL/x5-ner-service/ /opt/services/x5-ner-service/
-            docker compose -f docker-compose.prod.yml down --rmi all
-            docker compose -f docker-compose.prod.yml up -d
+            rsync -av --delete --exclude='.git/' --exclude='.github' /opt/services/DEVEL/x5-ner-service/ /opt/services/x5-ner-service/
+            cd /opt/services
+            docker compose build x5_ner_service
+            docker compose up -d x5_ner_service
+            docker image prune --filter="dangling=true" -f
           
             echo "✅Deployment completed successfully!"
           else
