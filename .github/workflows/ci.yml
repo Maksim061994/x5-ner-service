@@ -140,10 +140,7 @@ jobs:
       
           # Настраиваем SSH для Git с правильным ключом
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no"
-      
-          # Тестируем подключение (игнорируем код выхода, так как GitHub не дает shell)
-          ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no -T git@github.com 2>&1 | grep "successfully authenticated" || true
-      
+          
           # Проверяем, что branch существует перед checkout
           git fetch origin
       
@@ -151,22 +148,22 @@ jobs:
           if git show-ref --verify --quiet refs/remotes/origin/${{ github.head_ref }}; then
             echo "Branch ${{ github.head_ref }} exists, proceeding with checkout"
           
-          # Очищаем любые локальные изменения
-          git clean -fd
-          git fetch origin
-          git checkout -f ${{ github.head_ref }}
-          git reset --hard origin/${{ github.head_ref }}
+            # Очищаем любые локальные изменения
+            git clean -fd
+            git fetch origin
+            git checkout -f ${{ github.head_ref }}
+            git reset --hard origin/${{ github.head_ref }}
           
-          # Синхронизируем с production каталогом, исключая .git
-          rsync -av --delete --exclude='.git/' /opt/services/DEVEL/parser/ /opt/services/parser/
-          docker compose -f docker-compose.prod.yml down --rmi all
-          docker compose -f docker-compose.prod.yml up -d
+            # Синхронизируем с production каталогом, исключая .git
+            rsync -av --delete --exclude='.git/' /opt/services/DEVEL/parser/ /opt/services/parser/
+            docker compose -f docker-compose.prod.yml down --rmi all
+            docker compose -f docker-compose.prod.yml up -d
           
-          echo "✅Deployment completed successfully!"
-        else
-          echo "❌ Branch ${{ github.head_ref }} does not exist on remote"
-          exit 1
-        fi
+            echo "✅Deployment completed successfully!"
+          else
+            echo "❌ Branch ${{ github.head_ref }} does not exist on remote"
+            exit 1
+          fi
         EOF
 
     - name: Debug info
