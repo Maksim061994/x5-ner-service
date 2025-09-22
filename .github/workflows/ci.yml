@@ -118,7 +118,7 @@ jobs:
           cat ~/.ssh/config 2>/dev/null || echo "No SSH config"
       
           # Проверяем текущий git remote
-          cd /opt/services/DEVEL/parser
+          cd /opt/services/DEVEL/x5-ner-service
           echo "4. Current remote URL:"
           git remote get-url origin
       
@@ -136,7 +136,7 @@ jobs:
           echo "Deploying branch: ${{ github.head_ref }}"
           
           # Переходим в каталог разработки
-          cd /opt/services/DEVEL/parser
+          cd /opt/services/DEVEL/x5-ner-service
       
           # Настраиваем SSH для Git с правильным ключом
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no"
@@ -155,7 +155,7 @@ jobs:
             git reset --hard origin/${{ github.head_ref }}
           
             # Синхронизируем с production каталогом, исключая .git
-            rsync -av --delete --exclude='.git/' /opt/services/DEVEL/parser/ /opt/services/parser/
+            rsync -av --delete --exclude='.git/' /opt/services/DEVEL/x5-ner-service/ /opt/services/x5-ner-service/
             docker compose -f docker-compose.prod.yml down --rmi all
             docker compose -f docker-compose.prod.yml up -d
           
