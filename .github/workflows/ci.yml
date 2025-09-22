@@ -107,6 +107,12 @@ jobs:
           # Переходим в каталог разработки
           cd /opt/services/DEVEL/parser
           
+          # Настраиваем SSH для Git
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no"
+      
+          # Меняем URL на SSH если нужно
+          git remote set-url origin git@github.com/Maksim061994/x5-ner-service.git
+          
           # Очищаем любые локальные изменения
           git clean -fd
           git fetch origin

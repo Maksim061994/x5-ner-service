@@ -199,15 +199,6 @@ async def _load_ner_model(self, model_name: str):
     )
 ```
 
-### Рекомендуемые модели
-
-Для русского языка рекомендуются следующие модели:
-- `dbmdz/bert-base-russian-cased-finetuned-ner` - BERT для русского языка
-- `DeepPavlov/rubert-base-cased` - RuBERT
-- `sberbank-ai/ruBert-base` - Sberbank RuBERT
-
-**Важно:** Не используйте коммерческие NER-API или закрытые датасеты. Используйте только открытые модели и данные.
-
 ## Тестирование
 
 ### Запуск тестов
