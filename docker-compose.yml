@@ -1,32 +1,26 @@
-version: '3.8'
-
 services:
-  api:
-    build: .
+  x5_ner_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: x5_ner_service
     ports:
       - "8000:8000"
-    environment:
-      - PORT=8000
-      - WORKERS=1
-      - TIMEOUT_MS=900
-      - LOG_LEVEL=info
-      - MODEL_NAME=
+    env_file: .env
+    command: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --log-config=logconf.ini -n x5_ner_service
     restart: unless-stopped
+    volumes:
+      - ./app:/opt/app
+      - ./model:/opt/model
+      - ./gunicorn.conf.py:/opt/gunicorn.conf.py
+    logging:
+      driver: "json-file"
+      options:
+          max-size: "10m"
+          max-file: "10"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-    networks:
-      - x5-ner-network
-
-networks:
-  x5-ner-network:
-    driver: bridge

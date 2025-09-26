@@ -54,22 +54,10 @@ cp env.example .env
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Запуск в Docker
-
-1. Соберите Docker образ:
-```bash
-docker build -t x5-ner .
-```
-
-2. Запустите контейнер:
-```bash
-docker run -p 8000:8000 x5-ner
-```
-
 ### Запуск с Docker Compose
 
 ```bash
-docker-compose up --build
+docker-compose up -d
 ```
 
 ## API Документация
@@ -268,89 +256,6 @@ pip install -r requirements.txt
 pip install -e ".[dev]"
 ```
 
-### Линтинг и форматирование
-
-```bash
-# Проверка стиля кода
-ruff check app/
-
-# Форматирование кода
-black app/
-
-# Сортировка импортов
-isort app/
-
-# Проверка типов
-mypy app/
-```
-
-### Pre-commit хуки
-
-```bash
-pip install pre-commit
-pre-commit install
-```
-
-## Деплой
-
-### Docker
-
-```bash
-# Сборка образа
-docker build -t x5-ner:latest .
-
-# Запуск в продакшене
-docker run -d \
-  --name x5-ner \
-  -p 8000:8000 \
-  -e LOG_LEVEL=info \
-  -e TIMEOUT_MS=900 \
-  x5-ner:latest
-```
-
-### Kubernetes
-
-Пример манифеста для Kubernetes:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: x5-ner
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: x5-ner
-  template:
-    metadata:
-      labels:
-        app: x5-ner
-    spec:
-      containers:
-      - name: x5-ner
-        image: x5-ner:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: LOG_LEVEL
-          value: "info"
-        - name: TIMEOUT_MS
-          value: "900"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-```
-
 ## Лидерборд и Telegram-бот
 
 Сервис должен быть доступен по публичному URL для оценки через Telegram-бота. Убедитесь, что:
@@ -384,11 +289,3 @@ app/
     ├── test_bio_merge.py
     └── test_regex_rules.py
 ```
-
-## Лицензия
-
-MIT License
-
-## Поддержка
-
-Для вопросов и предложений создавайте issues в репозитории проекта.

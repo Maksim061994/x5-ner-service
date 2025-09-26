@@ -1,5 +1,5 @@
 # Используем официальный Python образ
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
 
 # Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
@@ -7,36 +7,50 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
+# set Work Directory
+WORKDIR /usr/src/app
 
-# Копируем файлы зависимостей
-COPY requirements.txt .
+# install dependencies
+RUN pip install --upgrade pip
+COPY ./requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
-# Устанавливаем Python зависимости
-RUN pip install --no-cache-dir -r requirements.txt
+FROM python:3.11-slim
 
-# Копируем исходный код приложения
-COPY app/ ./app/
+#Set environment variable
+ARG DEBIAN_FRONTEND=noninteractive
+#Prevents Python from writing pyc files to disc (equivalent python -B)
+ENV PYTHONDONTWRITEBYTECODE 1
+#Prevents Python from buffering stdout and stderr (equivalent python -u)
+ENV PYTHONUNBUFFERED 1
+ENV PATH=$PATH:/home/x5/.local/bin
 
-# Создаем пользователя для безопасности
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
+WORKDIR /opt/
 
-# Переменные окружения
-ENV PORT=8000
-ENV WORKERS=1
-ENV TIMEOUT_MS=900
-ENV LOG_LEVEL=info
-ENV MODEL_NAME=""
+# add app
+COPY . /opt/
 
-# Открываем порт
-EXPOSE 8000
+# install system dependencies and set Moscow time
+RUN apt-get update && \
+    apt-get -y install apt-utils tzdata locales nano curl telnet && \
+    apt-get clean && apt-get autoclean && apt-get autoremove && rm -rf /var/lib/apt/lists/* && \
+    ln -fs /usr/share/zoneinfo/Europe/Moscow /etc/localtime && \
+    sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen && \
+	groupadd -g 5000 x5 && \
+    useradd -u 5000 -g x5 -s /bin/bash -m x5 && \
+	chown -R x5:x5 /opt
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+#Set locale & timezone environment variable
+ENV TZ=Europe/Moscow
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
 
-# Команда запуска
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--loop", "uvloop", "--http", "httptools"]
+USER x5
+
+# install python dependencies
+COPY --from=builder --chown=x5:x5 /usr/src/app/wheels /tmp/wheels
+RUN pip install --upgrade --no-cache setuptools pip && \
+    pip install --no-cache /tmp/wheels/* && \
+	rm -rf /tmp/wheels/*

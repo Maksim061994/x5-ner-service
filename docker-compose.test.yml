@@ -2,7 +2,7 @@ services:
   x5_ner_service:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     container_name: x5_ner_service
     expose:
       - "8000"
