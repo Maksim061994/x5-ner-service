@@ -7,31 +7,31 @@ python-dotenv==1.0.0
 gunicorn
 
 # Производительность
-orjson==3.9.10
-uvloop==0.19.0
-httptools==0.6.1
+orjson
+uvloop
+httptools
 
 # Утилиты
-attrs==23.2.0
-regex==2023.10.3
+attrs
+regex
 
 # Разработка и тестирование
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
+pytest
+pytest-asyncio
+pytest-cov
 
 # Линтинг и форматирование
-ruff==0.1.6
-black==23.11.0
-isort==5.12.0
-mypy==1.7.1
+ruff
+black
+isort
+mypy
 httpx
 
 # Зависимости для NER модели (совместимые с NumPy 2.0)
-transformers==4.44.2
-torch==2.2.2
-tokenizers==0.19.1
-numpy>=1.24.0,<2.0.0
+transformers
+torch
+tokenizers
+numpy
 
-# Мониторинг (опционально)
-# psutil==5.9.6
+#SpaCy
+spacy[cuda12x]==3.8.6
