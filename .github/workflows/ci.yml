@@ -1,0 +1,206 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Lint with ruff
+      continue-on-error: true
+      run: |
+        ruff check app/ --output-format=github --ignore W293,E501,E203
+    
+    - name: Format check with black
+      continue-on-error: true
+      run: |
+        black --check app/
+    
+    - name: Type check with mypy
+      continue-on-error: true
+      run: |
+        mypy app/ --ignore-missing-imports
+    
+    - name: Test with pytest
+      continue-on-error: true
+      run: |
+        pytest app/tests/ -v --cov=app --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      continue-on-error: true
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  deploy-to-server:
+    # Проверяем, что PR не из форка
+    if: github.event.pull_request.head.repo.full_name == github.repository
+  
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Verify PR is not from fork
+      if: github.event.pull_request.head.repo.fork
+      run: |
+        echo "PR from fork repository - skipping deployment"
+        exit 1
+    
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.head_ref }}
+        fetch-depth: 0
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        ssh-keyscan -H ${{ secrets.HOST_TEST }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Debug SSH and Git setup
+      continue-on-error: true
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
+          set -e
+          echo "=== Debug Information ==="
+      
+          # Проверяем существование ключа
+          echo "1. Deploy key exists:"
+          ls -la ~/.ssh/github_deploy_key* || echo "Key not found"
+      
+          # Проверяем права на ключ
+          echo "2. Key permissions:"
+          stat ~/.ssh/github_deploy_key 2>/dev/null || echo "Key not accessible"
+      
+          # Проверяем SSH конфиг
+          echo "3. SSH config:"
+          cat ~/.ssh/config 2>/dev/null || echo "No SSH config"
+      
+          # Проверяем текущий git remote
+          cd /opt/services/DEVEL/x5-ner-service
+          echo "4. Current remote URL:"
+          git remote get-url origin
+      
+          # Тестируем подключение к GitHub
+          echo "5. Testing GitHub SSH access:"
+          ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no -T git@github.com
+      
+          echo "=== End Debug ==="
+        EOF
+
+    - name: Update DEVEL directory and sync with production
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME_TEST }}@${{ secrets.HOST_TEST }} << 'EOF'
+          set -e
+          echo "Deploying branch: ${{ github.head_ref }}"
+          
+          # Переходим в каталог разработки
+          cd /opt/services/DEVEL/x5-ner-service
+      
+          # Настраиваем SSH для Git с правильным ключом
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key -o StrictHostKeyChecking=no"
+
+          # Проверяем и исправляем remote URL если он HTTPS
+          CURRENT_URL=$(git remote get-url origin)
+          echo "Current remote URL: $CURRENT_URL"
+      
+          if [[ "$CURRENT_URL" == https://* ]]; then
+            echo "Changing HTTPS URL to SSH..."
+            git remote set-url origin git@github.com:Maksim061994/x5-ner-service.git
+          fi
+      
+          # Проверяем правильность URL после изменения
+          echo "New remote URL: $(git remote get-url origin)"
+
+          # Проверяем, что branch существует перед checkout
+          git fetch origin
+      
+          # Проверяем существование ветки
+          if git show-ref --verify --quiet refs/remotes/origin/${{ github.head_ref }}; then
+            echo "Branch ${{ github.head_ref }} exists, proceeding with checkout"
+          
+            # Очищаем любые локальные изменения
+            git clean -fd
+            git fetch origin
+            git checkout -f ${{ github.head_ref }}
+            git reset --hard origin/${{ github.head_ref }}
+          
+            # Синхронизируем с production каталогом, исключая .git
+            rsync -av --delete --exclude='.git/' --exclude='.github' /opt/services/DEVEL/x5-ner-service/ /opt/services/x5-ner-service/
+            cd /opt/services
+            docker compose build x5_ner_service
+            docker compose up -d x5_ner_service
+            docker image prune --filter="dangling=true" -f
+          
+            echo "✅Deployment completed successfully!"
+          else
+            echo "❌ Branch ${{ github.head_ref }} does not exist on remote"
+            exit 1
+          fi
+        EOF
+
+    - name: Debug info
+      run: |
+        echo "PR branch: ${{ github.head_ref }}"
+        echo "PR number: ${{ github.event.pull_request.number }}"
+
+#  security:
+#    runs-on: ubuntu-latest
+#    continue-on-error: true
+#    
+#    steps:
+#    - uses: actions/checkout@v4
+#    
+#    - name: Run Trivy vulnerability scanner
+#      uses: aquasecurity/trivy-action@master
+#      with:
+#        scan-type: 'fs'
+#        scan-ref: '.'
+#        format: 'sarif'
+#        output: 'trivy-results.sarif'
+#    
+#    - name: Upload Trivy scan results
+#      uses: github/codeql-action/upload-sarif@v3
+#      with:
+#        sarif_file: 'trivy-results.sarif'
