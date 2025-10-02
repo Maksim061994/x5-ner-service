@@ -87,7 +87,7 @@ class Pipeline:
         predict_spacy_best = self._predict_spacy(text, name_model="best")
 
         result = predict_crf
-        if predict_crf != predict_spacy_best:
+        if predict_crf != predict_spacy_best and len(text) < 10: # spacy дает более уверенный результат
             predict_spacy_full = self._predict_spacy(text, name_model="full")
 
             if predict_spacy_full == predict_spacy_best:
